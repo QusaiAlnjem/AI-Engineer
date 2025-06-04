@@ -1,269 +1,5 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-<script>
-        // Database simulation using localStorage
-        class UserDatabase {
-            constructor() {
-                this.users = JSON.parse(localStorage.getItem('portfolioUsers')) || [];
-                this.currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
-                this.init();
-            }
-            
-            init() {
-                if (this.currentUser) {
-                    this.showUserDashboard();
-                }
-            }
-            
-            register(username, email, password) {
-                // Check if user already exists
-                if (this.users.find(user => user.username === username || user.email === email)) {
-                    throw new Error('المستخدم موجود بالفعل');
-                }
-                
-                const newUser = {
-                    id: Date.now(),
-                    username,
-                    email,
-                    password, // في التطبيق الحقيقي، يجب تشفير كلمة المرور
-                    createdAt: new Date().toISOString(),
-                    visits: []
-                };
-                
-                this.users.push(newUser);
-                localStorage.setItem('portfolioUsers', JSON.stringify(this.users));
-                return newUser;
-            }
-            
-            login(username, password) {
-                const user = this.users.find(u => 
-                    (u.username === username || u.email === username) && u.password === password
-                );
-                
-                if (!user) {
-                    throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة');
-                }
-                
-                // Record visit
-                user.visits.push({
-                    timestamp: new Date().toISOString(),
-                    userAgent: navigator.userAgent
-                });
-                
-                this.currentUser = user;
-                localStorage.setItem('currentUser', JSON.stringify(user));
-                localStorage.setItem('portfolioUsers', JSON.stringify(this.users));
-                
-                return user;
-            }
-            
-            logout() {
-                this.currentUser = null;
-                localStorage.removeItem('currentUser');
-                this.hideUserDashboard();
-            }
-            
-            showUserDashboard() {
-                const loginBtn = document.getElementById('loginBtn');
-                const userDashboard = document.getElementById('userDashboard');
-                const userAvatar = document.getElementById('userAvatar');
-                const userName = document.getElementById('userName');
-                
-                if (this.currentUser) {
-                    loginBtn.style.display = 'none';
-                    userDashboard.style.display = 'block';
-                    userAvatar.textContent = this.currentUser.username.charAt(0).toUpperCase();
-                    userName.textContent = `مرحباً ${this.currentUser.username}!`;
-                }
-            }
-            
-            hideUserDashboard() {
-                const loginBtn = document.getElementById('loginBtn');
-                const userDashboard = document.getElementById('userDashboard');
-                
-                loginBtn.style.display = 'block';
-                userDashboard.style.display = 'none';
-            }
-        }
-
-        // Initialize database
-        const db = new UserDatabase();
-        
-        // Modal functionality
-        const modal = document.getElementById('authModal');
-        const loginBtn = document.getElementById('loginBtn');
-        const closeModal = document.getElementById('closeModal');
-        const authForm = document.getElementById('authForm');
-        const switchMode = document.getElementById('switchMode');
-        let isLoginMode = true;
-
-        // Open modal
-        loginBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            modal.style.display = 'block';
-        });
-
-        // Close modal
-        closeModal.addEventListener('click', () => {
-            modal.style.display = 'none';
-        });
-
-        // Close modal when clicking outside
-        window.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.style.display = 'none';
-            }
-        });
-
-        // Switch between login and register
-        switchMode.addEventListener('click', (e) => {
-            e.preventDefault();
-            isLoginMode = !isLoginMode;
-            updateModalMode();
-        });
-
-        function updateModalMode() {
-            const modalTitle = document.getElementById('modalTitle');
-            const emailField = document.getElementById('email');
-            const authSubmit = document.getElementById('authSubmit');
-            const switchText = document.getElementById('switchText');
-            
-            if (isLoginMode) {
-                modalTitle.textContent = 'تسجيل الدخول';
-                emailField.style.display = 'none';
-                emailField.required = false;
-                authSubmit.textContent = 'تسجيل الدخول';
-                switchText.textContent = 'ليس لديك حساب؟';
-                switchMode.textContent = 'إنشاء حساب جديد';
-            } else {
-                modalTitle.textContent = 'إنشاء حساب جديد';
-                emailField.style.display = 'block';
-                emailField.required = true;
-                authSubmit.textContent = 'إنشاء الحساب';
-                switchText.textContent = 'لديك حساب بالفعل؟';
-                switchMode.textContent = 'تسجيل الدخول';
-            }
-        }
-
-        // Handle form submission
-        authForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const username = document.getElementById('username').value;
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            
-            try {
-                if (isLoginMode) {
-                    const user = db.login(username, password);
-                    alert(`مرحباً ${user.username}! تم تسجيل الدخول بنجاح`);
-                    db.showUserDashboard();
-                } else {
-                    const user = db.register(username, email, password);
-                    alert(`تم إنشاء الحساب بنجاح! مرحباً ${user.username}`);
-                    // Auto login after registration
-                    db.login(username, password);
-                    db.showUserDashboard();
-                }
-                
-                modal.style.display = 'none';
-                authForm.reset();
-                
-            } catch (error) {
-                alert(error.message);
-            }
-        });
-
-        // Logout function
-        function logout() {
-            db.logout();
-            alert('تم تسجيل الخروج بنجاح');
-        }
-
-        // CV Download function
-        function downloadCV() {
-            // Create CV content based on the certificate
-            const cvContent = `قصي رياض النجيم - السيرة الذاتية
-
-معلومات شخصية:
-الاسم: قصي رياض النجيم
-تاريخ الميلاد: 04/11/2004
-الجنسية: الإمارات العربية المتحدة
-الإمارة: الفجيرة
-البريد الإلكتروني: alnjemforbusiness@gmail.com
-
-التحصيل الأكاديمي:
-- الثانوية العامة - المسار المتقدم (2022)
-  مدرسة الإمارات الخاصة، الفجيرة
-  المعدل: 99.01%
-  
-  الدرجات:
-  * التربية الإسلامية: 100/100
-  * اللغة العربية: 97.75/100
-  * الدراسات الاجتماعية والأخلاقية والثقافية: 98.5/100
-  * اللغة الإنجليزية: 98.65/100
-  * الرياضيات: 98.5/100
-  * الفيزياء (المستندة إلى التفاضل والتكامل): 100/100
-  * الكيمياء: 98.75/100
-  * العلوم الصحية: 99.9/100
-
-- بكالوريوس هندسة الكمبيوتر (2020-2024)
-  تخصص: الذكاء الاصطناعي وعلوم البيانات
-
-المهارات التقنية:
-- Python (90%)
-- TensorFlow/PyTorch (85%)
-- Machine Learning (88%)
-- Pandas/NumPy (92%)
-- Data Visualization (85%)
-- SQL (80%)
-- Java (75%)
-- JavaScript (70%)
-- Git & GitHub (85%)
-
-الخبرات والكورسات:
-- كورسات متقدمة في الذكاء الاصطناعي (2024)
-- مشاريع عملية في الذكاء الاصطناعي (2023-2024)
-- تحليل البيانات والتعلم العميق
-
-التواصل الاجتماعي:
-YouTube: https://www.youtube.com/@q.us1
-Instagram: https://www.instagram.com/qusainjeim/
-TikTok: https://www.tiktok.com/@q.us1
-
----
-تم إنشاء هذه السيرة الذاتية من الموقع الشخصي لقصي النجيم
-${new Date().toLocaleDateString('ar-AE')}`;
-
-            // Create and download file
-            const blob = new Blob([cvContent], { type: 'text/plain;charset=utf-8' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'قصي_النجيم_السيرة_الذاتية.txt';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            
-            // Show success message
-            alert('تم تحميل السيرة الذاتية بنجاح! 📄');
-        }
-
-        // Rest of the existing JavaScript code...
-        // Smooth scrolling
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-        e.preventDefault();
-        const target = document.querySelector(this.getAttribute('href'));
-        if (target) {
-            target.scrollIntoView({
-                behavior: 'smooth'
-            });
-        }
-    });
-});
-</script>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -810,205 +546,7 @@ ${new Date().toLocaleDateString('ar-AE')}`;
             }
         }
         
-        /* Login Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 2000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            backdrop-filter: blur(5px);
-        }
-        
-        .modal-content {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            margin: 5% auto;
-            padding: 0;
-            border: none;
-            width: 90%;
-            max-width: 400px;
-            border-radius: 20px;
-            position: relative;
-            animation: modalSlideIn 0.3s ease-out;
-        }
-        
-        @keyframes modalSlideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-50px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .modal-header {
-            padding: 2rem 2rem 1rem;
-            text-align: center;
-            color: white;
-        }
-        
-        .modal-header h2 {
-            margin: 0;
-            font-size: 1.8rem;
-        }
-        
-        .close {
-            position: absolute;
-            right: 15px;
-            top: 15px;
-            color: white;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .close:hover {
-            transform: rotate(90deg);
-            opacity: 0.7;
-        }
-        
-        .modal-body {
-            padding: 0 2rem 2rem;
-        }
-        
-        .login-form {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-        
-        .login-form input {
-            padding: 15px;
-            border: none;
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-size: 1rem;
-            backdrop-filter: blur(10px);
-        }
-        
-        .login-form input::placeholder {
-            color: rgba(255, 255, 255, 0.7);
-        }
-        
-        .login-form input:focus {
-            outline: none;
-            background: rgba(255, 255, 255, 0.2);
-            transform: scale(1.02);
-        }
-        
-        .login-btn {
-            background: linear-gradient(45deg, #ff6b6b, #feca57);
-            color: white;
-            padding: 15px;
-            border: none;
-            border-radius: 10px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-top: 1rem;
-        }
-        
-        .login-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(255, 107, 107, 0.3);
-        }
-        
-        .auth-switch {
-            text-align: center;
-            margin-top: 1rem;
-            color: rgba(255, 255, 255, 0.8);
-        }
-        
-        .auth-switch a {
-            color: #feca57;
-            text-decoration: none;
-            font-weight: bold;
-        }
-        
-        .auth-switch a:hover {
-            text-decoration: underline;
-        }
-        
-        /* User Dashboard */
-        .user-dashboard {
-            display: none;
-            position: fixed;
-            top: 80px;
-            left: 20px;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 1rem;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            z-index: 1500;
-            min-width: 200px;
-        }
-        
-        .user-info {
-            text-align: center;
-            margin-bottom: 1rem;
-        }
-        
-        .user-avatar {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 1.2rem;
-            margin: 0 auto 0.5rem;
-        }
-        
-        .logout-btn {
-            background: linear-gradient(45deg, #ff6b6b, #feca57);
-            color: white;
-            padding: 8px 16px;
-            border: none;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-        }
-        
-        .logout-btn:hover {
-            transform: translateY(-2px);
-        }
-        
-        /* Download CV Button */
-        .download-cv {
-            display: inline-block;
-            margin-top: 1rem;
-            padding: 12px 30px;
-            background: linear-gradient(45deg, #48cab2, #2dd4bf);
-            color: white;
-            text-decoration: none;
-            border-radius: 25px;
-            font-weight: bold;
-            transition: all 0.3s ease;
-            box-shadow: 0 8px 25px rgba(72, 202, 178, 0.3);
-        }
-        
-        .download-cv:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 35px rgba(72, 202, 178, 0.4);
-        }
-        
-        .download-cv::before {
-            content: '📄 ';
-            margin-left: 8px;
-        }
+        /* Scroll animations */
         .fade-in-section {
             opacity: 0;
             transform: translateY(50px);
@@ -1025,7 +563,7 @@ ${new Date().toLocaleDateString('ar-AE')}`;
     <header>
         <nav>
             <div class="logo">
-                <img src="C:\Users\HP\Desktop\Imgaes\custom-features.png" alt="شعار قصي النجيم" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                <img src="Imgaes\custom-features.png" alt="شعار قصي النجيم" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                 <span style="display: none; font-size: 1.8rem; font-weight: bold; background: linear-gradient(45deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">قصي النجيم</span>
             </div>
             <ul class="nav-links">
@@ -1034,17 +572,7 @@ ${new Date().toLocaleDateString('ar-AE')}`;
                 <li><a href="#skills">المهارات</a></li>
                 <li><a href="#experience">الخبرة</a></li>
                 <li><a href="#contact">التواصل</a></li>
-                <li><a href="#" id="loginBtn" class="login-trigger">تسجيل الدخول</a></li>
             </ul>
-            
-            <!-- User Dashboard (Hidden by default) -->
-            <div class="user-dashboard" id="userDashboard">
-                <div class="user-info">
-                    <div class="user-avatar" id="userAvatar">ق</div>
-                    <div id="userName">مرحباً!</div>
-                </div>
-                <button class="logout-btn" onclick="logout()">تسجيل الخروج</button>
-            </div>
         </nav>
     </header>
 
@@ -1057,7 +585,6 @@ ${new Date().toLocaleDateString('ar-AE')}`;
             <h1>قصي النجيم</h1>
             <p class="subtitle">مهندس كمبيوتر | متخصص في الذكاء الاصطناعي والتعلم العميق</p>
             <a href="#about" class="cta-button">اكتشف المزيد</a>
-            <a href="#" onclick="downloadCV()" class="download-cv">تحميل السيرة الذاتية</a>
         </div>
     </section>
 
@@ -1067,10 +594,6 @@ ${new Date().toLocaleDateString('ar-AE')}`;
             <div class="about-content">
                 <div class="about-image">
                     <div class="stats">
-                        <div class="stat-item">
-                            <span class="stat-number">99.01%</span>
-                            <span>معدل الثانوية العامة</span>
-                        </div>
                         <div class="stat-item">
                             <span class="stat-number">B.S.</span>
                             <span>درجة البكالوريوس</span>
@@ -1082,13 +605,11 @@ ${new Date().toLocaleDateString('ar-AE')}`;
                     </div>
                 </div>
                 <div class="about-text">
-                    <p>مرحباً! أنا قصي رياض النجيم، مهندس كمبيوتر حاصل على شهادة البكالوريوس مع شغف عميق بالذكاء الاصطناعي والتعلم العميق. تخرجت من الثانوية العامة بمعدل متميز 99.01% في المسار المتقدم.</p>
+                    <p>مرحباً! أنا قصي النجيم، مهندس كمبيوتر حاصل على شهادة البكالوريوس مع شغف عميق بالذكاء الاصطناعي والتعلم العميق. أمتلك خبرة واسعة في تطوير حلول الذكاء الاصطناعي وتحليل البيانات.</p>
                     
-                    <p>أمتلك خبرة واسعة في تطوير حلول الذكاء الاصطناعي وتحليل البيانات، وقد أكملت العديد من الكورسات المتخصصة في تطوير الذكاء الاصطناعي وتحليل البيانات، مما أكسبني فهماً عميقاً للتقنيات الحديثة والأدوات المتطورة في هذا المجال.</p>
+                    <p>لقد أكملت العديد من الكورسات المتخصصة في تطوير الذكاء الاصطناعي وتحليل البيانات، مما أكسبني فهماً عميقاً للتقنيات الحديثة والأدوات المتطورة في هذا المجال.</p>
                     
                     <p>هدفي هو الاستمرار في التطور والنمو في مجال الذكاء الاصطناعي والمساهمة في بناء حلول تقنية مبتكرة تحدث فرقاً حقيقياً.</p>
-                    
-                    <a href="#" onclick="downloadCV()" class="download-cv">تحميل السيرة الذاتية الكاملة</a>
                 </div>
             </div>
         </div>
@@ -1200,14 +721,6 @@ ${new Date().toLocaleDateString('ar-AE')}`;
             <div class="timeline">
                 <div class="timeline-item">
                     <div class="timeline-card">
-                        <div class="timeline-date">2022</div>
-                        <div class="timeline-title">الثانوية العامة - المسار المتقدم</div>
-                        <p>تخرجت من مدرسة الإمارات الخاصة بمعدل متميز 99.01% في المسار المتقدم، مع درجات عالية في الرياضيات والفيزياء والكيمياء، مما أسس قاعدة قوية للتخصص في هندسة الكمبيوتر.</p>
-                    </div>
-                </div>
-                
-                <div class="timeline-item">
-                    <div class="timeline-card">
                         <div class="timeline-date">2024 - الحاضر</div>
                         <div class="timeline-title">كورسات متقدمة في الذكاء الاصطناعي</div>
                         <p>إكمال عدة كورسات متخصصة في تطوير الذكاء الاصطناعي والتعلم العميق وتحليل البيانات من منصات عالمية معترف بها.</p>
@@ -1268,28 +781,6 @@ ${new Date().toLocaleDateString('ar-AE')}`;
             <p>&copy; 2025 قصي النجيم. جميع الحقوق محفوظة.</p>
         </div>
     </footer>
-
-    <!-- Login/Register Modal -->
-    <div id="authModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span class="close" id="closeModal">&times;</span>
-                <h2 id="modalTitle">تسجيل الدخول</h2>
-            </div>
-            <div class="modal-body">
-                <form class="login-form" id="authForm">
-                    <input type="text" id="username" placeholder="اسم المستخدم" required>
-                    <input type="email" id="email" placeholder="البريد الإلكتروني" required style="display: none;">
-                    <input type="password" id="password" placeholder="كلمة المرور" required>
-                    <button type="submit" class="login-btn" id="authSubmit">تسجيل الدخول</button>
-                </form>
-                <div class="auth-switch">
-                    <span id="switchText">ليس لديك حساب؟</span>
-                    <a href="#" id="switchMode">إنشاء حساب جديد</a>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <script>
         // Smooth scrolling
